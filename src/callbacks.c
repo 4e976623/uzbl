@@ -750,6 +750,53 @@ request_starting_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitWebRes
 }
 
 void
+request_finished(SoupSession *session, SoupMessage *msg, gpointer user_data) {
+    GTlsCertificate      *cert, *issuer_cert;
+    GTlsCertificateFlags errors;
+
+    SoupURI *soup_uri = soup_message_get_uri(msg);
+    gchar *uri = soup_uri_to_string(soup_uri, false);
+
+    if (uzbl.behave.tls_certificate_handler) {
+      gboolean status = soup_message_get_https_status(msg, &cert, &errors);
+
+      // TODO: this doesn't seem to mean we're not using TLS.
+      // isn't set on redirects?
+      if(!status)
+        return;
+
+      GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
+      gint handler_stdin;
+
+      sharg_append(a, uzbl.behave.tls_certificate_handler);
+      sharg_append(a, uri);
+
+      GError *error;
+
+      if(!g_spawn_async_with_pipes(NULL, (gchar **)a->data, NULL, G_SPAWN_SEARCH_PATH, NULL,
+          NULL, NULL, &handler_stdin, NULL, NULL, &error)) {
+        // TODO: error handling.
+        puts("feck.");
+        return;
+      }
+
+      const gchar *pubkey = "";
+
+      // send the issuer certificate to the handler
+      // TODO: handle NULL (self-signed)
+      g_object_get(cert, "issuer", &issuer_cert, NULL);
+      g_object_get(issuer_cert, "certificate-pem", &pubkey, NULL);
+      write(handler_stdin, pubkey, strlen(pubkey));
+
+      // send the server certificate to the handler
+      g_object_get(cert, "certificate-pem", &pubkey, NULL);
+      write(handler_stdin, pubkey, strlen(pubkey));
+
+      close(handler_stdin);
+    }
+}
+
+void
 create_web_view_js2_cb (WebKitWebView* web_view, GParamSpec param_spec) {
     (void) web_view;
     (void) param_spec;

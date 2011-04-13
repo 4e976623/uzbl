@@ -95,6 +95,7 @@ const struct var_name_to_ptr_t {
     { "authentication_handler", PTR_V_STR(uzbl.behave.authentication_handler,   1,   set_authentication_handler)},
     { "scheme_handler",         PTR_V_STR(uzbl.behave.scheme_handler,           1,   NULL)},
     { "download_handler",       PTR_V_STR(uzbl.behave.download_handler,         1,   NULL)},
+    { "certificate_handler",    PTR_V_STR(uzbl.behave.tls_certificate_handler,  1,   NULL)},
     { "fifo_dir",               PTR_V_STR(uzbl.behave.fifo_dir,                 1,   cmd_fifo_dir)},
     { "socket_dir",             PTR_V_STR(uzbl.behave.socket_dir,               1,   cmd_socket_dir)},
     { "http_debug",             PTR_V_INT(uzbl.behave.http_debug,               1,   cmd_http_debug)},
@@ -1582,7 +1583,9 @@ settings_init () {
     if (s->connect_socket_names)
         init_connect_socket();
 
-    g_signal_connect(n->soup_session, "authenticate", G_CALLBACK(handle_authentication), NULL);
+    g_signal_connect(n->soup_session, "authenticate",     G_CALLBACK(handle_authentication), NULL);
+    /* TODO: figure out if we are handling encrypted redirects correctly here. */
+    g_signal_connect(n->soup_session, "request-unqueued", G_CALLBACK(request_finished),      NULL);
 }
 
 

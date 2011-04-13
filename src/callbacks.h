@@ -199,6 +199,9 @@ void
 request_starting_cb(WebKitWebView *web_view, WebKitWebFrame *frame, WebKitWebResource *resource,
         WebKitNetworkRequest *request, WebKitNetworkResponse *response, gpointer user_data);
 
+void
+request_finished(SoupSession *sesion, SoupMessage *msg, gpointer user_data);
+
 /*@null@*/ WebKitWebView*
 create_web_view_cb (WebKitWebView  *web_view, WebKitWebFrame *frame, gpointer user_data);
 

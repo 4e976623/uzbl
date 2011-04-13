@@ -155,6 +155,7 @@ typedef struct {
     gchar*   authentication_handler;
     gchar*   scheme_handler;
     gchar*   download_handler;
+    gchar*   tls_certificate_handler;
 
     /* Fonts */
     gchar*   default_font_family;
