@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# The approach to certificate verification that I'm trying to use is described
+# on slides 71-74 of
+# https://docs.google.com/present/view?id=df9sn445_206ff3kn9gs&pli=1
+#
+# A more traditional approach is possible, easier, and boring.
+
 uri=$1
 domain=${uri#*://}
 domain=${domain%%/*}
