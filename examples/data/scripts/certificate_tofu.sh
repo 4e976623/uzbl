@@ -1,21 +1,55 @@
 #!/bin/sh
 
-tempfile=$(tempfile -p cert_)
+uri=$1
+domain=${uri#*://}
+domain=${domain%%/*}
 
-while read LINE
-do
-  echo "$LINE" >> "$tempfile"
-  [[ "${LINE}" == "-----END CERTIFICATE-----" ]] && break
-done
+issuer_tempfile=$(tempfile -p cert_)
+server_tempfile=$(tempfile -p cert_)
 
-openssl x509 -fingerprint -noout -in "$tempfile"
+function save_temp_certs {
+  while read LINE
+  do
+    echo "$LINE" >> "$issuer_tempfile"
+    [[ "${LINE}" == "-----END CERTIFICATE-----" ]] && break
+  done
 
-rm $tempfile
+  cat > "$server_tempfile"
+}
 
-tempfile=$(tempfile -p cert_)
+function fingerprint {
+  r=$(openssl x509 -fingerprint -md5 -noout -in "$1")
+  echo ${r#*=}
+}
 
-cat > "$tempfile"
+save_temp_certs
 
-openssl x509 -fingerprint -noout -in "$tempfile"
+issuer_fingerprint=$(fingerprint "$issuer_tempfile")
+rm "$issuer_tempfile"
 
-rm $tempfile
+server_fingerprint=$(fingerprint "$server_tempfile")
+rm "$server_tempfile"
+
+cert_dir=/tmp/uzbl-ssl
+
+mkdir -p "$cert_dir/$domain"
+
+trusted_path="$cert_dir/$domain/trusted"
+
+# if the certificate was previously trusted for this domain, we trust it now.
+# TODO: check if the certificate is revoked or expired
+[ -e "$trusted_path" ] && grep -q "$server_fingerprint" "$trusted_path" && exit 0
+
+if [ -s "$trusted_path" ]
+then
+  # we've seen this domain before, but this certificate has not been trusted
+  # TODO: check perspectives and PKI
+  true
+else
+  # we've never seen this domain
+  # TODO: test that cert matches origin
+  # TODO: check PKI and perspectives
+  true
+fi
+
+echo "uri data:text/html,<title>Untrusted SSL Certificate</title><p>The SSL certificate sent by $domain is not trusted. <p><code>echo $server_fingerprint >> $trusted_path</code><p><a href='$uri'>retry" > "$UZBL_FIFO"
