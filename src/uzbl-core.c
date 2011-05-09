@@ -137,6 +137,7 @@ const struct var_name_to_ptr_t {
     { "current_encoding",       PTR_V_STR(uzbl.behave.current_encoding,         1,   set_current_encoding)},
     { "enforce_96_dpi",         PTR_V_INT(uzbl.behave.enforce_96dpi,            1,   cmd_enforce_96dpi)},
     { "caret_browsing",         PTR_V_INT(uzbl.behave.caret_browsing,           1,   cmd_caret_browsing)},
+    { "enable_webgl",           PTR_V_INT(uzbl.behave.enable_webgl,             1,   set_enable_webgl)},
 
 #if !GTK_CHECK_VERSION(3,0,0)
     { "scrollbars_visible",     PTR_V_INT(uzbl.gui.scrollbars_visible,          1,   cmd_scrollbars_visibility)},

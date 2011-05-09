@@ -190,6 +190,7 @@ typedef struct {
     gchar    *inject_html;
     guint    caret_browsing;
     guint    javascript_windows;
+    guint    enable_webgl;
     gboolean print_version;
 
     /* command list: (key)name -> (value)Command  */

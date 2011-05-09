@@ -287,6 +287,12 @@ cmd_caret_browsing() {
 }
 
 void
+set_enable_webgl() {
+    g_object_set (G_OBJECT(view_settings()), "enable-webgl",
+            uzbl.behave.enable_webgl, NULL);
+}
+
+void
 set_current_encoding() {
     gchar *encoding = uzbl.behave.current_encoding;
     if(strlen(encoding) == 0)

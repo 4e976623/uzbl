@@ -122,6 +122,9 @@ void
 cmd_caret_browsing();
 
 void
+set_enable_webgl();
+
+void
 cmd_javascript_windows();
 
 void
