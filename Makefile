@@ -32,14 +32,16 @@ CPPFLAGS += -DARCH=\"$(ARCH)\" -DCOMMIT=\"$(COMMIT_HASH)\"
 
 PKG_CFLAGS:=$(shell pkg-config --cflags $(REQ_PKGS))
 
-LDLIBS:=$(shell pkg-config --libs $(REQ_PKGS) x11)
+LDLIBS:=$(shell pkg-config --libs $(REQ_PKGS) x11) -lfl
 
 CFLAGS += -std=c99 $(PKG_CFLAGS) -ggdb -W -Wall -Wextra -pedantic -pthread
 
 SRC = $(wildcard src/*.c)
 HEAD = $(wildcard src/*.h)
-OBJ  = $(foreach obj, $(SRC:.c=.o),  $(notdir $(obj)))
-LOBJ = $(foreach obj, $(SRC:.c=.lo), $(notdir $(obj)))
+SRC += parser/uzbl.tab.c parser/lex.yy.c
+
+OBJ  = $(foreach obj, $(SRC:.c=.o),  $(obj))
+LOBJ = $(foreach obj, $(SRC:.c=.lo), $(obj))
 PY = $(wildcard uzbl/*.py uzbl/plugins/*.py)
 
 all: uzbl-browser
@@ -65,6 +67,12 @@ force:
 # this is here because the .so needs to be compiled with -fPIC on x86_64
 ${LOBJ}: ${SRC} ${HEAD}
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c src/$(@:.lo=.c) -o $@
+
+parser/uzbl.tab.c: parser/uzbl.y parser/lex.yy.c
+	bison -d parser/uzbl.y -o $@
+
+parser/lex.yy.c: parser/uzbl.l
+	flex --header-file=parser/uzbl.flex.h -o $@ parser/uzbl.l
 
 # When compiling unit tests, compile uzbl as a library first
 tests: ${LOBJ} force
