@@ -42,7 +42,7 @@ control_fifo(GIOChannel *gio, GIOCondition condition) {
         g_error_free (err);
     }
 
-    parse_cmd_line(ctl_line, NULL);
+    parse_string(ctl_line);
     g_free(ctl_line);
 
     return TRUE;
@@ -111,13 +111,8 @@ control_stdin(GIOChannel *gio, GIOCondition condition) {
     if ( (ret == G_IO_STATUS_ERROR) || (ret == G_IO_STATUS_EOF) )
         return FALSE;
 
-    GString *result = g_string_new("");
-
-    parse_cmd_line(ctl_line, result);
+    parse_string(ctl_line);
     g_free(ctl_line);
-
-    puts(result->str);
-    g_string_free(result, TRUE);
 
     return TRUE;
 }
@@ -212,7 +207,6 @@ init_connect_socket() {
 gboolean
 control_client_socket(GIOChannel *clientchan) {
     char *ctl_line;
-    GString *result = g_string_new("");
     GError *error = NULL;
     GIOStatus ret;
     gsize len;
@@ -240,10 +234,7 @@ control_client_socket(GIOChannel *clientchan) {
     }
 
     if (ctl_line) {
-        parse_cmd_line (ctl_line, result);
-        g_string_append_c(result, '\n');
-        ret = g_io_channel_write_chars (clientchan, result->str, result->len,
-                                        &len, &error);
+        parse_string (ctl_line);
         if (ret == G_IO_STATUS_ERROR) {
             g_warning ("Error writing: %s", error->message);
             g_clear_error (&error);
@@ -254,7 +245,6 @@ control_client_socket(GIOChannel *clientchan) {
         }
     }
 
-    g_string_free(result, TRUE);
     g_free(ctl_line);
     return TRUE;
 }

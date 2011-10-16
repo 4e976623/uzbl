@@ -18,7 +18,6 @@ CommandInfo cmdlist[] =
     { "stop",                           view_stop_loading, 0           },
     { "zoom_in",                        view_zoom_in, 0                }, //Can crash (when max zoom reached?).
     { "zoom_out",                       view_zoom_out, 0               },
-    { "uri",                            load_uri, TRUE                 },
     { "js",                             run_js, TRUE                   },
     { "script",                         run_external_js, 0             },
     { "spawn",                          spawn_async, 0                 },
@@ -31,14 +30,11 @@ CommandInfo cmdlist[] =
     { "search_reverse",                 search_reverse_text, TRUE      },
     { "search_clear",                   search_clear, TRUE             },
     { "dehilight",                      dehilight, 0                   },
-    { "set",                            set_var, TRUE                  },
     { "toggle",                         toggle_var, 0                  },
     { "dump_config",                    act_dump_config, 0             },
     { "dump_config_as_events",          act_dump_config_as_events, 0   },
     { "chain",                          chain, 0                       },
     { "print",                          print, TRUE                    },
-    { "event",                          event, TRUE                    },
-    { "request",                        event, TRUE                    },
     { "menu_add",                       menu_add, TRUE                 },
     { "menu_link_add",                  menu_add_link, TRUE            },
     { "menu_image_add",                 menu_add_image, TRUE           },
@@ -52,7 +48,6 @@ CommandInfo cmdlist[] =
     { "menu_image_remove",              menu_remove_image, TRUE        },
     { "menu_editable_remove",           menu_remove_edit, TRUE         },
     { "hardcopy",                       hardcopy, TRUE                 },
-    { "include",                        include, TRUE                  },
     { "show_inspector",                 show_inspector, 0              },
     { "add_cookie",                     add_cookie, 0                  },
     { "delete_cookie",                  delete_cookie, 0               },
@@ -133,13 +128,11 @@ scroll_cmd(WebKitWebView* page, GArray *argv, GString *result) {
 }
 
 void
-set_var(WebKitWebView *page, GArray *argv, GString *result) {
-    (void) page; (void) result;
-
-    if(!argv_idx(argv, 0))
+set_var(const gchar *rest_of_line) {
+    if(!rest_of_line)
         return;
 
-    gchar **split = g_strsplit(argv_idx(argv, 0), "=", 2);
+    gchar **split = g_strsplit(rest_of_line, "=", 2);
     if (split[0] != NULL) {
         gchar *value = split[1] ? g_strchug(split[1]) : " ";
         set_var_value(g_strstrip(split[0]), value);
@@ -250,19 +243,16 @@ toggle_var(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-event(WebKitWebView *page, GArray *argv, GString *result) {
-    (void) page; (void) result;
+event(const gchar *rest_of_line) {
     GString *event_name;
     gchar **split = NULL;
 
-    if(!argv_idx(argv, 0))
-       return;
+    split = g_strsplit(rest_of_line, " ", 2);
 
-    split = g_strsplit(argv_idx(argv, 0), " ", 2);
-    if(split[0])
-        event_name = g_string_ascii_up(g_string_new(split[0]));
-    else
+    if(!split[0])
         return;
+
+    event_name = g_string_ascii_up(g_string_new(split[0]));
 
     send_event(0, event_name->str, TYPE_FORMATTEDSTR, split[1] ? split[1] : "", NULL);
 
@@ -290,15 +280,12 @@ hardcopy(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-include(WebKitWebView *page, GArray *argv, GString *result) {
-    (void) page; (void) result;
-    gchar *path = argv_idx(argv, 0);
-
-    if(!path)
+include(const gchar *path) {
+    if(path[0] == 0)
         return;
 
     if((path = find_existing_file(path))) {
-		run_command_file(path);
+        run_command_file(path);
         send_event(FILE_INCLUDED, NULL, TYPE_STR, path, NULL);
         g_free(path);
     }
@@ -395,13 +382,6 @@ download(WebKitWebView *web_view, GArray *argv, GString *result) {
         g_object_unref(download);
 
     g_object_unref(req);
-}
-
-void
-load_uri(WebKitWebView *web_view, GArray *argv, GString *result) {
-    (void) web_view; (void) result;
-    gchar * uri = argv_idx(argv, 0);
-    set_var_value("uri", uri ? uri : "");
 }
 
 void

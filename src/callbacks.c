@@ -574,14 +574,14 @@ run_menu_command(GtkWidget *menu, MenuItem *mi) {
         g_object_get(mi->hittest, "image-uri", &uri, NULL);
         gchar* cmd = g_strdup_printf("%s %s", mi->cmd, uri);
 
-        parse_cmd_line(cmd, NULL);
+        parse_string(cmd);
 
         g_free(cmd);
         g_free(uri);
         g_object_unref(mi->hittest);
     }
     else {
-        parse_cmd_line(mi->cmd, NULL);
+        parse_string(mi->cmd);
     }
 }
 

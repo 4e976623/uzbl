@@ -37,8 +37,6 @@ void        view_go_forward(WebKitWebView *page, GArray *argv, GString *result);
 void        toggle_zoom_type (WebKitWebView* page, GArray *argv, GString *result);
 void        scroll_cmd(WebKitWebView* page, GArray *argv, GString *result);
 void        print(WebKitWebView *page, GArray *argv, GString *result);
-void        event(WebKitWebView *page, GArray *argv, GString *result);
-void        load_uri(WebKitWebView * web_view, GArray *argv, GString *result);
 void        chain(WebKitWebView *page, GArray *argv, GString *result);
 void        close_uzbl(WebKitWebView *page, GArray *argv, GString *result);
 void        spawn_async(WebKitWebView *web_view, GArray *argv, GString *result);
@@ -51,17 +49,19 @@ void        search_reverse_text (WebKitWebView *page, GArray *argv, GString *res
 void        search_clear(WebKitWebView *page, GArray *argv, GString *result);
 void        dehilight (WebKitWebView *page, GArray *argv, GString *result);
 void        hardcopy(WebKitWebView *page, GArray *argv, GString *result);
-void        include(WebKitWebView *page, GArray *argv, GString *result);
 void        show_inspector(WebKitWebView *page, GArray *argv, GString *result);
 void        add_cookie(WebKitWebView *page, GArray *argv, GString *result);
 void        delete_cookie(WebKitWebView *page, GArray *argv, GString *result);
 void        clear_cookies(WebKitWebView *pag, GArray *argv, GString *result);
 void        download(WebKitWebView *pag, GArray *argv, GString *result);
-void        set_var(WebKitWebView *page, GArray *argv, GString *result);
 void        toggle_var(WebKitWebView *page, GArray *argv, GString *result);
 void        run_js (WebKitWebView * web_view, GArray *argv, GString *result);
 void        run_external_js (WebKitWebView * web_view, GArray *argv, GString *result);
 void        act_dump_config(WebKitWebView* page, GArray *argv, GString *result);
 void        act_dump_config_as_events(WebKitWebView* page, GArray *argv, GString *result);
+
+void        event(const gchar *rest_of_line);
+void        set_var(const gchar *rest_of_line);
+void        include(const gchar *path);
 
 #endif

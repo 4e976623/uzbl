@@ -348,7 +348,7 @@ scroll(GtkAdjustment* bar, gchar *amount_str) {
 static void
 parse_cmd_line_cb(const char *line, void *user_data) {
     (void) user_data;
-    parse_cmd_line(line, NULL);
+    parse_string(line);
 }
 
 void
@@ -571,7 +571,7 @@ spawn(GArray *argv, GString *result, gboolean exec) {
                 gchar *tail;
                 while ((tail = strchr (head, '\n'))) {
                     *tail = '\0';
-                    parse_cmd_line(head, NULL);
+                    parse_string(head);
                     head = tail + 1;
                 }
             }
@@ -692,48 +692,10 @@ parse_command_parts(const gchar *line, GArray *a) {
     return c;
 }
 
-void
-parse_command(const char *cmd, const char *params, GString *result) {
-    CommandInfo *c = g_hash_table_lookup(uzbl.behave.commands, cmd);
-    if(c) {
-        GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-
-        parse_command_arguments(params, a, c->no_split);
-        run_parsed_command(c, a, result);
-
-        g_array_free (a, TRUE);
-    } else {
-        send_event(COMMAND_ERROR, NULL,
-            TYPE_NAME, cmd,
-            TYPE_STR, params ? params : "",
-            NULL);
-    }
-}
-
 gboolean
 valid_name(const gchar* name) {
     char *invalid_chars = "\t^°!\"§$%&/()=?'`'+~*'#-:,;@<>| \\{}[]¹²³¼½";
     return strpbrk(name, invalid_chars) == NULL;
-}
-
-void
-parse_cmd_line(const char *ctl_line, GString *result) {
-    gchar *work_string = g_strdup(ctl_line);
-
-    /* strip trailing newline, and any other whitespace in front */
-    g_strstrip(work_string);
-
-    if( strcmp(work_string, "") ) {
-        if((work_string[0] != '#')) { /* ignore comments */
-            GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-            const CommandInfo *c = parse_command_parts(work_string, a);
-            if(c)
-                run_parsed_command(c, a, result);
-            g_array_free (a, TRUE);
-        }
-    }
-
-    g_free(work_string);
 }
 
 void
@@ -845,7 +807,7 @@ settings_init () {
 
     /* Load default config */
     for (i = 0; default_config[i].command != NULL; i++) {
-        parse_cmd_line(default_config[i].command, NULL);
+        parse_string(default_config[i].command, NULL);
     }
 
     if (g_strcmp0(s->config_file, "-") == 0) {
