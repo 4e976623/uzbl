@@ -287,7 +287,6 @@ include(const gchar *path) {
     if((path = find_existing_file(path))) {
         run_command_file(path);
         send_event(FILE_INCLUDED, NULL, TYPE_STR, path, NULL);
-        g_free(path);
     }
 }
 

@@ -1,5 +1,11 @@
 %{
+
+extern char *strdup(const char *s);
+
 #include "uzbl.tab.h"
+
+#include <glib.h>
+
 %}
 
 %x rest_of_line
@@ -37,12 +43,12 @@ menu_editable_remove\     { BEGIN(rest_of_line); return MENU_EDITABLE_REMOVE; }
 
 include\                  { BEGIN(rest_of_line); return INCLUDE; }
 
-<rest_of_line>[^\n]*    { *(char**)yylval = strdup(yytext); return REST_OF_LINE; }
+<rest_of_line>[^\n]*    { *(gchar**)yylval = strdup(yytext); return REST_OF_LINE; }
 <rest_of_line>\n        { BEGIN(INITIAL); return EOL; }
 
 
 
-[a-zA-Z0-9_/:\.-]+            { *(char**)yylval = strdup(yytext); return WORD; }
+[a-zA-Z0-9_/:\.=-]+            { *(gchar**)yylval = strdup(yytext); return WORD; }
 
 \"                      return DQUOTE;
 \'                      return SQUOTE;

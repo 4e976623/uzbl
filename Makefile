@@ -121,7 +121,7 @@ test-uzbl-tabbed-sandbox: sandbox uzbl-browser sandbox-install-uzbl-browser sand
 
 clean:
 	rm -f uzbl-core
-	rm -f *.o
+	rm -f src/*.o parser/*.o
 	find ./examples/ -name "*.pyc" -delete
 	cd ./tests/; $(MAKE) clean
 	rm -rf ./sandbox/

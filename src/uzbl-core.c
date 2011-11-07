@@ -240,6 +240,7 @@ expand(const char* s, guint recurse) {
         }
     }
     g_string_free(js_ret, TRUE);
+
     return g_string_free(buf, FALSE);
 }
 
@@ -343,6 +344,8 @@ scroll(GtkAdjustment* bar, gchar *amount_str) {
 }
 
 /* -- CORE FUNCTIONS -- */
+
+extern int parse_string(const char* input);
 
 /* just a wrapper so parse_cmd_line can be used with for_each_line_in_file */
 static void
@@ -807,7 +810,7 @@ settings_init () {
 
     /* Load default config */
     for (i = 0; default_config[i].command != NULL; i++) {
-        parse_string(default_config[i].command, NULL);
+        parse_string(default_config[i].command);
     }
 
     if (g_strcmp0(s->config_file, "-") == 0) {
