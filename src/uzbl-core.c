@@ -92,7 +92,7 @@ get_exp_type(const gchar *s) {
 gchar*
 expand(const char* s, guint recurse) {
     enum exp_type etype;
-    char*         end_simple_var = "\t^°!\"§$%&/()=?'`'+~*'#-:,;@<>| \\{}[]¹²³¼½";
+    char*         end_simple_var = "\t\n^°!\"§$%&/()=?'`'+~*'#-:,;@<>| \\{}[]¹²³¼½";
     char*         ret = NULL;
     char*         vend = NULL;
     GError*       err = NULL;

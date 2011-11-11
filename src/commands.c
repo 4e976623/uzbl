@@ -448,18 +448,9 @@ chain(WebKitWebView *page, GArray *argv, GString *result) {
     (void) page;
     guint i = 0;
     const gchar *cmd;
-    GString *r = g_string_new ("");
     while ((cmd = argv_idx(argv, i++))) {
-        GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-        const CommandInfo *c = parse_command_parts(cmd, a);
-        if (c)
-            run_parsed_command(c, a, r);
-        g_array_free (a, TRUE);
+        parse_string(cmd);
     }
-    if(result)
-        g_string_assign (result, r->str);
-
-    g_string_free(r, TRUE);
 }
 
 void

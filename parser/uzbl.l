@@ -1,14 +1,14 @@
 %{
 
+#include <glib.h>
+
 extern char *strdup(const char *s);
 
 #include "uzbl.tab.h"
 
-#include <glib.h>
-
 %}
 
-%x rest_of_line
+%x rest_of_line dquote squote
 
 %option noyywrap nounput
 %option reentrant
@@ -46,12 +46,15 @@ include\                  { BEGIN(rest_of_line); return INCLUDE; }
 <rest_of_line>[^\n]*    { *(gchar**)yylval = strdup(yytext); return REST_OF_LINE; }
 <rest_of_line>\n        { BEGIN(INITIAL); return EOL; }
 
+[a-zA-Z0-9_/:\.=%-]+            { *(gchar**)yylval = strdup(yytext); return WORD; }
 
+\"                      { BEGIN(dquote); }
+<dquote>(\\.|[^\\"])*   { *(gchar**)yylval = strdup(yytext); return WORD; }
+<dquote>\"              { BEGIN(INITIAL); }
 
-[a-zA-Z0-9_/:\.=-]+            { *(gchar**)yylval = strdup(yytext); return WORD; }
-
-\"                      return DQUOTE;
-\'                      return SQUOTE;
+\'                      { BEGIN(squote); }
+<squote>(\\.|[^\\'])*   { *(gchar**)yylval = strdup(yytext); return WORD; }
+<squote>\'              { BEGIN(INITIAL); }
 
 \n                      return EOL;
 #.*\n                   /* ignore comments */;

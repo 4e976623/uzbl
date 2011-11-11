@@ -1,14 +1,13 @@
 %{
-#define YYSTYPE char *
 
-#include "uzbl.flex.h"
+#include <glib.h>
 
+#include "../src/uzbl-core.h"
 #include "../src/commands.h"
 #include "../src/variables.h"
 
-extern gchar* expand(const char* s, guint recurse);
-
-#include <glib.h>
+#include "uzbl.tab.h"
+#include "uzbl.flex.h"
 
 void yyerror(const char *str)
 {
@@ -21,14 +20,22 @@ void yyerror(const char *str)
 %define api.pure
 %define api.push-pull push
 
-%token SET PRINT URI JS SEARCH SEARCH_REVERSE EVENT
-%token MENU_ADD       MENU_LINK_ADD       MENU_IMAGE_ADD        MENU_EDITABLE_ADD
-%token MENU_SEPARATOR MENU_LINK_SEPARATOR MENU_IMAGE_SEPARATOR  MENU_EDITABLE_SEPARATOR
-%token MENU_REMOVE    MENU_LINK_REMOVE    MENU_IMAGE_REMOVE     MENU_EDITABLE_REMOVE
-%token INCLUDE REST_OF_LINE DQUOTE SQUOTE EOL WORD
+%union {
+  GArray* array;
+  gchar* string;
+}
+
+%token <string> SET PRINT URI JS SEARCH SEARCH_REVERSE EVENT
+%token <string> MENU_ADD       MENU_LINK_ADD       MENU_IMAGE_ADD        MENU_EDITABLE_ADD
+%token <string> MENU_SEPARATOR MENU_LINK_SEPARATOR MENU_IMAGE_SEPARATOR  MENU_EDITABLE_SEPARATOR
+%token <string> MENU_REMOVE    MENU_LINK_REMOVE    MENU_IMAGE_REMOVE     MENU_EDITABLE_REMOVE
+%token <string> INCLUDE REST_OF_LINE DQUOTE SQUOTE EOL WORD
+
+%type  <string> command rol
+%type  <array>  arguments
 %%
 lines:
-        | lines line
+        | lines line | lines command
         ;
 
 line: command EOL | EOL
@@ -36,36 +43,41 @@ line: command EOL | EOL
 command:
        SET rol            { set_var($2); g_free($2); }
        |
-       PRINT rol          { printf("print %s\n", $2); }
+       PRINT rol          { printf("print %s\n", $2); g_free($2); }
        |
        URI rol            { set_var_value("uri", $2); g_free($2); }
        |
-       JS rol             { printf("js %s\n", $2); }
+       JS rol             { eval_js(uzbl.gui.web_view, $2, NULL, "(command)"); g_free($2); }
        |
-       SEARCH rol         { printf("search %s\n", $2); }
+       SEARCH rol         { search_text(uzbl.gui.web_view, $2, TRUE); g_free($2); }
        |
-       SEARCH_REVERSE rol { printf("search_reverse %s\n", $2); }
+       SEARCH_REVERSE rol { search_text(uzbl.gui.web_view, $2, FALSE); g_free($2); }
        |
        EVENT rol          { event($2); g_free($2); }
        |
        INCLUDE rol        { include($2); g_free($2); }
        |
-       WORD arguments     { printf("CUSTOM COMMAND %s\n", $1); }
+       WORD arguments     {
+          CommandInfo *c = g_hash_table_lookup(uzbl.behave.commands, $1);
+
+          run_parsed_command(c, $2, NULL);
+
+/* this crashes for some reason...
+          for(int i = 0; i < $2->len; ++i)
+            g_free($2->data[i]);
+*/
+
+          g_array_free($2, TRUE);
+       }
        ;
 
 rol:
   REST_OF_LINE
 
 arguments:
-      | arguments argument
-      ;
-
-argument: WORD | quoted_words
-
-quoted_words: DQUOTE words DQUOTE | SQUOTE words SQUOTE
-
-words:
-      | words WORD
+      WORD arguments { g_array_prepend_val($2, $1); $$ = $2; }
+      |
+      { $$ = g_array_new(TRUE, FALSE, sizeof(gchar*)); }
       ;
 
 %%
