@@ -197,12 +197,13 @@ expand(const char* s, guint recurse) {
 
                     /* read JS from file */
                     if(ret[0] == '+') {
-                        GArray *tmp = g_array_new(TRUE, FALSE, sizeof(gchar *));
                         mycmd = expand(ret+1, 2);
-                        g_array_append_val(tmp, mycmd);
+                        GSList *tmp = g_slist_append(NULL, mycmd);
 
                         run_external_js(uzbl.gui.web_view, tmp, js_ret);
-                        g_array_free(tmp, TRUE);
+
+                        g_slist_free(tmp);
+                        g_free(mycmd);
                     }
                     /* JS from string */
                     else {
@@ -322,7 +323,7 @@ empty_event_buffer(int s) {
 
 /* scroll a bar in a given direction */
 void
-scroll(GtkAdjustment* bar, gchar *amount_str) {
+scroll(GtkAdjustment* bar, const gchar *amount_str) {
     gchar *end;
     gdouble max_value;
 
@@ -471,17 +472,18 @@ sharg_append(GArray *a, const gchar *str) {
 /* make sure that the args string you pass can properly be interpreted (eg
  * properly escaped against whitespace, quotes etc) */
 gboolean
-run_command (const gchar *command, const gchar **args, const gboolean sync,
+run_command (const gchar *command, const GSList *args, const gboolean sync,
              char **output_stdout) {
     GError *err = NULL;
 
     GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-    guint i;
 
     sharg_append(a, command);
 
-    for (i = 0; i < g_strv_length((gchar**)args); i++)
-        sharg_append(a, args[i]);
+    while(args) {
+        sharg_append(a, args->data);
+        args = g_slist_next(args);
+    }
 
     gboolean result;
     if (sync) {
@@ -496,7 +498,7 @@ run_command (const gchar *command, const gchar **args, const gboolean sync,
 
     if (uzbl.state.verbose) {
         GString *s = g_string_new("spawned:");
-        for (i = 0; i < (a->len); i++) {
+        for (guint i = 0; i < (a->len); i++) {
             gchar *qarg = g_shell_quote(g_array_index(a, gchar*, i));
             g_string_append_printf(s, " %s", qarg);
             g_free (qarg);
@@ -554,40 +556,40 @@ split_quoted(const gchar* src, const gboolean unquote) {
 }
 
 void
-spawn(GArray *argv, GString *result, gboolean exec) {
-    gchar *path = NULL;
-
-    if (!argv_idx(argv, 0))
+spawn(GSList *argv, GString *result, gboolean exec) {
+    if (!argv)
         return;
 
-    const gchar **args = &g_array_index(argv, const gchar *, 1);
+    gchar *path = find_existing_file(argv->data);
+    argv = g_slist_next(argv);
 
-    path = find_existing_file(argv_idx(argv, 0));
-    if(path) {
-        gchar *r = NULL;
-        run_command(path, args, result != NULL, result ? &r : NULL);
-        if(result) {
-            g_string_assign(result, r);
-            // run each line of output from the program as a command
-            if (exec && r) {
-                gchar *head = r;
-                gchar *tail;
-                while ((tail = strchr (head, '\n'))) {
-                    *tail = '\0';
-                    parse_string(head);
-                    head = tail + 1;
-                }
+    if(!path) {
+        g_printerr ("Failed to spawn child process: %s not found\n", path);
+        return;
+    }
+
+    gchar *r = NULL;
+    run_command(path, argv, result != NULL, result ? &r : NULL);
+    if(result && r) {
+        g_string_assign(result, r);
+        // run each line of output from the program as a command
+        if (exec && r) {
+            gchar *head = r;
+            gchar *tail;
+            while ((tail = strchr (head, '\n'))) {
+                *tail = '\0';
+                parse_string(head);
+                head = tail + 1;
             }
         }
-        g_free(r);
-        g_free(path);
-    } else {
-        g_printerr ("Failed to spawn child process: %s not found\n", argv_idx(argv, 0));
     }
+
+    g_free(r);
+    g_free(path);
 }
 
 void
-spawn_sh(GArray *argv, GString *result) {
+spawn_sh(GSList *argv, GString *result) {
     if (!uzbl.behave.shell_cmd) {
         g_printerr ("spawn_sh: shell_cmd is not set!\n");
         return;
@@ -599,25 +601,25 @@ spawn_sh(GArray *argv, GString *result) {
         return;
 
     gchar *cmdname = g_strdup(cmd[0]);
-    g_array_insert_val(argv, 1, cmdname);
+    argv = g_slist_insert(argv, cmdname, 1);
 
     for (i = 1; i < g_strv_length(cmd); i++)
-        g_array_prepend_val(argv, cmd[i]);
+        argv = g_slist_prepend(argv, cmd[i]);
 
     if (result) {
         gchar *r = NULL;
-        run_command(cmd[0], (const gchar **) argv->data, TRUE, &r);
+        run_command(cmd[0], argv, TRUE, &r);
         g_string_assign(result, r);
         g_free(r);
     } else
-        run_command(cmd[0], (const gchar **) argv->data, FALSE, NULL);
+        run_command(cmd[0], argv, FALSE, NULL);
 
     g_free (cmdname);
     g_strfreev (cmd);
 }
 
 void
-run_parsed_command(const CommandInfo *c, GArray *a, GString *result) {
+run_parsed_command(const CommandInfo *c, GSList *a, GString *result) {
     /* send the COMMAND_EXECUTED event, except for set and event/request commands */
     if(strcmp("set", c->key)   &&
        strcmp("event", c->key) &&
@@ -644,9 +646,9 @@ run_parsed_command(const CommandInfo *c, GArray *a, GString *result) {
 }
 
 void
-parse_command_arguments(const gchar *p, GArray *a, gboolean no_split) {
+parse_command_arguments(const gchar *p, GSList **a, gboolean no_split) {
     if (no_split && p) { /* pass the parameters through in one chunk */
-        sharg_append(a, g_strdup(p));
+        *a = g_slist_append(*a, g_strdup(p));
         return;
     }
 
@@ -654,13 +656,13 @@ parse_command_arguments(const gchar *p, GArray *a, gboolean no_split) {
     if (par) {
         guint i;
         for (i = 0; i < g_strv_length(par); i++)
-            sharg_append(a, g_strdup(par[i]));
+            *a = g_slist_append(*a, g_strdup(par[i]));
         g_strfreev (par);
     }
 }
 
 const CommandInfo *
-parse_command_parts(const gchar *line, GArray *a) {
+parse_command_parts(const gchar *line, GSList **a) {
     CommandInfo *c = NULL;
 
     gchar *exp_line = expand(line, 0);
@@ -848,17 +850,17 @@ void handle_authentication (SoupSession *session, SoupMessage *msg, SoupAuth *au
         gchar *host  = g_strdup(soup_auth_get_host(auth));
         gchar *realm = g_strdup(soup_auth_get_realm(auth));
 
-        GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-        const CommandInfo *c = parse_command_parts(uzbl.behave.authentication_handler, a);
+        GSList *a = NULL;
+        const CommandInfo *c = parse_command_parts(uzbl.behave.authentication_handler, &a);
         if(c) {
-            sharg_append(a, info);
-            sharg_append(a, host);
-            sharg_append(a, realm);
-            sharg_append(a, retrying ? "TRUE" : "FALSE");
+            a = g_slist_append(a, info);
+            a = g_slist_append(a, host);
+            a = g_slist_append(a, realm);
+            a = g_slist_append(a, retrying ? "TRUE" : "FALSE");
 
             run_parsed_command(c, a, result);
         }
-        g_array_free(a, TRUE);
+        g_slist_free(a);
 
         if (result->len > 0) {
             char  *username, *password;

@@ -182,15 +182,22 @@ vformat_event(int type, const gchar *custom_event, va_list vargs) {
 
         case TYPE_STR_ARRAY:
             ; /* gcc is acting up and requires a expression before the variables */
-            GArray *a = va_arg (vargs, GArray*);
-            const char *p;
-            int i = 0;
-            while ((p = argv_idx(a, i++))) {
-                if (i != 0)
+            GSList *item = va_arg (vargs, GSList*);
+
+            gboolean did_at_least_one = false;
+
+            while (item) {
+                const char *p = item->data;
+
+                if (did_at_least_one)
                     g_string_append_c(event_message, ' ');
+
                 g_string_append_c (event_message, '\'');
                 append_escaped (event_message, p);
                 g_string_append_c (event_message, '\'');
+
+                did_at_least_one = true;
+                item = g_slist_next(item);
             }
             break;
 

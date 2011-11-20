@@ -21,7 +21,7 @@ void yyerror(const char *str)
 %define api.push-pull push
 
 %union {
-  GArray* array;
+  GSList* list;
   gchar* string;
 }
 
@@ -32,7 +32,7 @@ void yyerror(const char *str)
 %token <string> INCLUDE REST_OF_LINE DQUOTE SQUOTE EOL WORD
 
 %type  <string> command rol
-%type  <array>  arguments
+%type  <list>  arguments
 %%
 lines:
         | lines line | lines command
@@ -67,7 +67,8 @@ command:
             g_free($2->data[i]);
 */
 
-          g_array_free($2, TRUE);
+          g_slist_free($2);
+          // g_slist_free_full($2, g_free);
        }
        ;
 
@@ -75,9 +76,10 @@ rol:
   REST_OF_LINE
 
 arguments:
-      WORD arguments { g_array_prepend_val($2, $1); $$ = $2; }
+      // should be left-recursive instead?
+      WORD arguments { $$ = g_slist_prepend($2, $1); }
       |
-      { $$ = g_array_new(TRUE, FALSE, sizeof(gchar*)); }
+      { $$ = NULL; }
       ;
 
 %%

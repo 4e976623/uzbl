@@ -80,7 +80,7 @@ builtins() {
 }
 
 /* VIEW funcs (little webkit wrappers) */
-#define VIEWFUNC(name) void view_##name(WebKitWebView *page, GArray *argv, GString *result){(void)argv; (void)result; webkit_web_view_##name(page);}
+#define VIEWFUNC(name) void view_##name(WebKitWebView *page, GSList *argv, GString *result){(void)argv; (void)result; webkit_web_view_##name(page);}
 VIEWFUNC(reload)
 VIEWFUNC(reload_bypass_cache)
 VIEWFUNC(stop_loading)
@@ -102,10 +102,14 @@ VIEWFUNC(go_forward)
  * scroll horizontal end
  */
 void
-scroll_cmd(WebKitWebView* page, GArray *argv, GString *result) {
+scroll_cmd(WebKitWebView* page, GSList *argv, GString *result) {
     (void) page; (void) result;
-    gchar *direction = g_array_index(argv, gchar*, 0);
-    gchar *argv1     = g_array_index(argv, gchar*, 1);
+
+    const gchar *direction = argv->data;
+    argv = g_slist_next(argv);
+
+    const gchar *argv1     = argv->data;
+
     GtkAdjustment *bar = NULL;
 
     if (g_strcmp0(direction, "horizontal") == 0)
@@ -141,13 +145,14 @@ set_var(const gchar *rest_of_line) {
 }
 
 void
-toggle_var(WebKitWebView *page, GArray *argv, GString *result) {
+toggle_var(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) result;
 
-    if(!argv_idx(argv, 0))
+    if(!argv)
         return;
 
-    const gchar *var_name = argv_idx(argv, 0);
+    const gchar *var_name = argv->data;
+    argv = g_slist_next(argv);
 
     uzbl_cmdprop *c = get_var_c(var_name);
 
@@ -156,17 +161,19 @@ toggle_var(WebKitWebView *page, GArray *argv, GString *result) {
     {
         const gchar *next;
 
-        if(argv->len >= 3) {
+        if(g_slist_length(argv) >= 2) {
             gchar *current = get_var_value_string_c(c);
 
-            guint i = 2;
-            const gchar *first   = argv_idx(argv, 1);
+            const gchar *first   = argv->data;
+            argv = g_slist_next(argv);
+
             const gchar *this    = first;
-                         next    = argv_idx(argv, 2);
+                         next    = argv->data;
 
             while(next && strcmp(current, this)) {
                 this = next;
-                next = argv_idx(argv, ++i);
+                argv = g_slist_next(argv);
+                next = argv->data;
             }
 
             if(!next)
@@ -184,17 +191,18 @@ toggle_var(WebKitWebView *page, GArray *argv, GString *result) {
         int current = get_var_value_int_c(c);
         int next;
 
-        if(argv->len >= 3) {
-            guint i = 2;
+        if(g_slist_length(argv) >= 2) {
+            int first = strtoul(argv->data, NULL, 10);
+            argv = g_slist_next(argv);
 
-            int first = strtoul(argv_idx(argv, 1), NULL, 10);
-            int  this = first;
+            int this = first;
 
-            const gchar *next_s = argv_idx(argv, 2);
+            const gchar *next_s = argv->data;
 
             while(next_s && this != current) {
                 this   = strtoul(next_s, NULL, 10);
-                next_s = argv_idx(argv, ++i);
+                argv = g_slist_next(argv);
+                next_s = argv->data;
             }
 
             if(next_s)
@@ -212,17 +220,17 @@ toggle_var(WebKitWebView *page, GArray *argv, GString *result) {
         float current = get_var_value_float_c(c);
         float next;
 
-        if(argv->len >= 3) {
-            guint i = 2;
-
-            float first = strtod(argv_idx(argv, 1), NULL);
+        if(g_slist_length(argv) >= 2) {
+            float first = strtod(argv->data, NULL);
+            argv = g_slist_next(argv);
             float  this = first;
 
-            const gchar *next_s = argv_idx(argv, 2);
+            const gchar *next_s = argv->data;
 
             while(next_s && this != current) {
                 this   = strtod(next_s, NULL);
-                next_s = argv_idx(argv, ++i);
+                argv = g_slist_next(argv);
+                next_s = argv->data;
             }
 
             if(next_s)
@@ -261,20 +269,20 @@ event(const gchar *rest_of_line) {
 }
 
 void
-print(WebKitWebView *page, GArray *argv, GString *result) {
+print(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) result;
     gchar* buf;
 
     if(!result)
         return;
 
-    buf = expand(argv_idx(argv, 0), 0);
+    buf = expand(argv->data, 0);
     g_string_assign(result, buf);
     g_free(buf);
 }
 
 void
-hardcopy(WebKitWebView *page, GArray *argv, GString *result) {
+hardcopy(WebKitWebView *page, GSList *argv, GString *result) {
     (void) argv; (void) result;
     webkit_web_frame_print(webkit_web_view_get_main_frame(page));
 }
@@ -291,31 +299,40 @@ include(const gchar *path) {
 }
 
 void
-show_inspector(WebKitWebView *page, GArray *argv, GString *result) {
+show_inspector(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) argv; (void) result;
 
     webkit_web_inspector_show(uzbl.gui.inspector);
 }
 
 void
-add_cookie(WebKitWebView *page, GArray *argv, GString *result) {
+add_cookie(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) result;
     gchar *host, *path, *name, *value;
     gboolean secure = 0;
     SoupDate *expires = NULL;
 
-    if(argv->len != 6)
+    if(g_slist_length(argv) != 6)
         return;
 
     // Parse with same syntax as ADD_COOKIE event
-    host = argv_idx (argv, 0);
-    path = argv_idx (argv, 1);
-    name = argv_idx (argv, 2);
-    value = argv_idx (argv, 3);
-    secure = strcmp (argv_idx (argv, 4), "https") == 0;
-    if (strlen (argv_idx (argv, 5)) != 0)
-        expires = soup_date_new_from_time_t (
-            strtoul (argv_idx (argv, 5), NULL, 10));
+    host = argv->data;
+    argv = g_slist_next(argv);
+
+    path = argv->data;
+    argv = g_slist_next(argv);
+
+    name = argv->data;
+    argv = g_slist_next(argv);
+
+    value = argv->data;
+    argv = g_slist_next(argv);
+
+    secure = strcmp (argv->data, "https") == 0;
+    argv = g_slist_next(argv);
+
+    if (strlen (argv->data) != 0)
+        expires = soup_date_new_from_time_t (strtoul (argv->data, NULL, 10));
 
     // Create new cookie
     SoupCookie * cookie = soup_cookie_new (name, value, host, path, -1);
@@ -330,17 +347,29 @@ add_cookie(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-delete_cookie(WebKitWebView *page, GArray *argv, GString *result) {
+delete_cookie(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) result;
 
-    if(argv->len < 4)
+    if(g_slist_length(argv) < 4)
         return;
 
+    const gchar *host = argv->data;
+    argv = g_slist_next(argv);
+
+    const gchar *path = argv->data;
+    argv = g_slist_next(argv);
+
+    const gchar *name = argv->data;
+    argv = g_slist_next(argv);
+
+    const gchar *value = argv->data;
+    argv = g_slist_next(argv);
+
     SoupCookie * cookie = soup_cookie_new (
-        argv_idx (argv, 2),
-        argv_idx (argv, 3),
-        argv_idx (argv, 0),
-        argv_idx (argv, 1),
+        name,
+        value,
+        host,
+        path,
         0);
 
     uzbl.net.soup_cookie_jar->in_manual_add = 1;
@@ -349,7 +378,7 @@ delete_cookie(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-clear_cookies(WebKitWebView *page, GArray *argv, GString *result) {
+clear_cookies(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page; (void) argv; (void) result;
 
     // Replace the current cookie jar with a new empty jar
@@ -362,13 +391,14 @@ clear_cookies(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-download(WebKitWebView *web_view, GArray *argv, GString *result) {
+download(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void) result;
 
-    const gchar *uri         = argv_idx(argv, 0);
+    const gchar *uri         = argv->data;
     const gchar *destination = NULL;
-    if(argv->len > 1)
-        destination = argv_idx(argv, 1);
+
+    if(argv->next)
+        destination = argv->next->data;
 
     WebKitNetworkRequest *req = webkit_network_request_new(uri);
     WebKitDownload *download = webkit_download_new(req);
@@ -384,41 +414,43 @@ download(WebKitWebView *web_view, GArray *argv, GString *result) {
 }
 
 void
-run_js (WebKitWebView * web_view, GArray *argv, GString *result) {
-    if (argv_idx(argv, 0))
-        eval_js(web_view, argv_idx(argv, 0), result, "(command)");
+run_js (WebKitWebView * web_view, GSList *argv, GString *result) {
+    if (argv)
+        eval_js(web_view, argv->data, result, "(command)");
 }
 
 void
-run_external_js (WebKitWebView * web_view, GArray *argv, GString *result) {
+run_external_js (WebKitWebView * web_view, GSList *argv, GString *result) {
     (void) result;
     gchar *path = NULL;
 
-    if (argv_idx(argv, 0) &&
-        ((path = find_existing_file(argv_idx(argv, 0)))) ) {
-        gchar *file_contents = NULL;
+    if (!argv || !(path = find_existing_file(argv->data)))
+        return;
 
-        GIOChannel *chan = g_io_channel_new_file(path, "r", NULL);
-        if (chan) {
-            gsize len;
-            g_io_channel_read_to_end(chan, &file_contents, &len, NULL);
-            g_io_channel_unref (chan);
-        }
+    gchar *file_contents = NULL;
 
-        if (uzbl.state.verbose)
-            printf ("External JavaScript file %s loaded\n", argv_idx(argv, 0));
-
-        gchar *js = str_replace("%s", argv_idx (argv, 1) ? argv_idx (argv, 1) : "", file_contents);
-        g_free (file_contents);
-
-        eval_js (web_view, js, result, path);
-        g_free (js);
-        g_free(path);
+    GIOChannel *chan = g_io_channel_new_file(path, "r", NULL);
+    if (chan) {
+        gsize len;
+        g_io_channel_read_to_end(chan, &file_contents, &len, NULL);
+        g_io_channel_unref (chan);
     }
+
+    if (uzbl.state.verbose)
+        printf ("External JavaScript file %s loaded\n", argv->data);
+
+    argv = g_slist_next(argv);
+
+    gchar *js = str_replace("%s", argv ? argv->data : "", file_contents);
+    g_free (file_contents);
+
+    eval_js (web_view, js, result, path);
+    g_free (js);
+    g_free(path);
 }
 
 void
-search_clear(WebKitWebView *page, GArray *argv, GString *result) {
+search_clear(WebKitWebView *page, GSList *argv, GString *result) {
     (void) argv; (void) result;
     webkit_web_view_unmark_text_matches (page);
     g_free(uzbl.state.searchtx);
@@ -426,35 +458,37 @@ search_clear(WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-search_forward_text (WebKitWebView *page, GArray *argv, GString *result) {
+search_forward_text (WebKitWebView *page, GSList *argv, GString *result) {
     (void) result;
-    search_text(page, argv_idx(argv, 0), TRUE);
+    if(!argv)
+        return;
+    search_text(page, argv->data, TRUE);
 }
 
 void
-search_reverse_text(WebKitWebView *page, GArray *argv, GString *result) {
+search_reverse_text(WebKitWebView *page, GSList *argv, GString *result) {
     (void) result;
-    search_text(page, argv_idx(argv, 0), FALSE);
+    if(!argv)
+        return;
+    search_text(page, argv->data, FALSE);
 }
 
 void
-dehilight(WebKitWebView *page, GArray *argv, GString *result) {
+dehilight(WebKitWebView *page, GSList *argv, GString *result) {
     (void) argv; (void) result;
     webkit_web_view_set_highlight_text_matches (page, FALSE);
 }
 
 void
-chain(WebKitWebView *page, GArray *argv, GString *result) {
+chain(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
-    guint i = 0;
-    const gchar *cmd;
-    while ((cmd = argv_idx(argv, i++))) {
-        parse_string(cmd);
+    while ((argv = g_slist_next(argv))) {
+        parse_string(argv->data);
     }
 }
 
 void
-close_uzbl (WebKitWebView *page, GArray *argv, GString *result) {
+close_uzbl (WebKitWebView *page, GSList *argv, GString *result) {
     (void)page; (void)argv; (void)result;
     // hide window a soon as possible to avoid getting stuck with a
     // non-response window in the cleanup steps
@@ -467,19 +501,19 @@ close_uzbl (WebKitWebView *page, GArray *argv, GString *result) {
 }
 
 void
-spawn_async(WebKitWebView *web_view, GArray *argv, GString *result) {
+spawn_async(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view; (void)result;
     spawn(argv, NULL, FALSE);
 }
 
 void
-spawn_sync(WebKitWebView *web_view, GArray *argv, GString *result) {
+spawn_sync(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view;
     spawn(argv, result, FALSE);
 }
 
 void
-spawn_sync_exec(WebKitWebView *web_view, GArray *argv, GString *result) {
+spawn_sync_exec(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view;
     if(!result) {
         GString *force_result = g_string_new("");
@@ -490,25 +524,25 @@ spawn_sync_exec(WebKitWebView *web_view, GArray *argv, GString *result) {
 }
 
 void
-spawn_sh_async(WebKitWebView *web_view, GArray *argv, GString *result) {
+spawn_sh_async(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view; (void)result;
     spawn_sh(argv, NULL);
 }
 
 void
-spawn_sh_sync(WebKitWebView *web_view, GArray *argv, GString *result) {
+spawn_sh_sync(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view; (void)result;
     spawn_sh(argv, result);
 }
 
 void
-act_dump_config(WebKitWebView *web_view, GArray *argv, GString *result) {
+act_dump_config(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view; (void) argv; (void)result;
     dump_config();
 }
 
 void
-act_dump_config_as_events(WebKitWebView *web_view, GArray *argv, GString *result) {
+act_dump_config_as_events(WebKitWebView *web_view, GSList *argv, GString *result) {
     (void)web_view; (void) argv; (void)result;
     dump_config_as_events();
 }

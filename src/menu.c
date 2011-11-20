@@ -3,15 +3,15 @@
 #include "uzbl-core.h"
 
 void
-add_to_menu(GArray *argv, guint context) {
+add_to_menu(GSList *argv, guint context) {
     GUI *g = &uzbl.gui;
     MenuItem *m;
     gchar *item_cmd = NULL;
 
-    if(!argv_idx(argv, 0))
+    if(argv)
         return;
 
-    gchar **split = g_strsplit(argv_idx(argv, 0), "=", 2);
+    gchar **split = g_strsplit(argv->data, "=", 2);
     if(!g->menu_items)
         g->menu_items = g_ptr_array_new();
 
@@ -32,17 +32,16 @@ add_to_menu(GArray *argv, guint context) {
 
 
 void
-menu_add(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
     add_to_menu(argv, WEBKIT_HIT_TEST_RESULT_CONTEXT_DOCUMENT);
-
 }
 
 
 void
-menu_add_link(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_link(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -51,7 +50,7 @@ menu_add_link(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_add_image(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_image(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -60,7 +59,7 @@ menu_add_image(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_add_edit(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_edit(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -69,18 +68,18 @@ menu_add_edit(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-add_separator_to_menu(GArray *argv, guint context) {
+add_separator_to_menu(GSList *argv, guint context) {
     GUI *g = &uzbl.gui;
     MenuItem *m;
     gchar *sep_name;
 
+    if(!argv)
+        return;
+
+    sep_name = argv->data;
+
     if(!g->menu_items)
         g->menu_items = g_ptr_array_new();
-
-    if(!argv_idx(argv, 0))
-        return;
-    else
-        sep_name = argv_idx(argv, 0);
 
     m = malloc(sizeof(MenuItem));
     m->name    = g_strdup(sep_name);
@@ -92,7 +91,7 @@ add_separator_to_menu(GArray *argv, guint context) {
 
 
 void
-menu_add_separator(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_separator(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -101,7 +100,7 @@ menu_add_separator(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_add_separator_link(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_separator_link(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -110,7 +109,7 @@ menu_add_separator_link(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_add_separator_image(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_separator_image(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -119,7 +118,7 @@ menu_add_separator_image(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_add_separator_edit(WebKitWebView *page, GArray *argv, GString *result) {
+menu_add_separator_edit(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -128,19 +127,16 @@ menu_add_separator_edit(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-remove_from_menu(GArray *argv, guint context) {
+remove_from_menu(GSList *argv, guint context) {
     GUI *g = &uzbl.gui;
     MenuItem *mi;
     gchar *name = NULL;
     guint i=0;
 
-    if(!g->menu_items)
+    if(!argv || !g->menu_items)
         return;
 
-    if(!argv_idx(argv, 0))
-        return;
-    else
-        name = argv_idx(argv, 0);
+    name = argv->data;
 
     for(i=0; i < g->menu_items->len; i++) {
         mi = g_ptr_array_index(g->menu_items, i);
@@ -156,7 +152,7 @@ remove_from_menu(GArray *argv, guint context) {
 
 
 void
-menu_remove(WebKitWebView *page, GArray *argv, GString *result) {
+menu_remove(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -165,7 +161,7 @@ menu_remove(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_remove_link(WebKitWebView *page, GArray *argv, GString *result) {
+menu_remove_link(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -174,7 +170,7 @@ menu_remove_link(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_remove_image(WebKitWebView *page, GArray *argv, GString *result) {
+menu_remove_image(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 
@@ -183,7 +179,7 @@ menu_remove_image(WebKitWebView *page, GArray *argv, GString *result) {
 
 
 void
-menu_remove_edit(WebKitWebView *page, GArray *argv, GString *result) {
+menu_remove_edit(WebKitWebView *page, GSList *argv, GString *result) {
     (void) page;
     (void) result;
 

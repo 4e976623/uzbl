@@ -274,14 +274,14 @@ navigation_decision_cb (WebKitWebView *web_view, WebKitWebFrame *frame, WebKitNe
 
     if (uzbl.behave.scheme_handler) {
         GString *result = g_string_new ("");
-        GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-        const CommandInfo *c = parse_command_parts(uzbl.behave.scheme_handler, a);
+        GSList *a = NULL;
+        const CommandInfo *c = parse_command_parts(uzbl.behave.scheme_handler, &a);
 
         if(c) {
-            g_array_append_val(a, uri);
+            a = g_slist_append(a, uri);
             run_parsed_command(c, a, result);
         }
-        g_array_free(a, TRUE);
+        g_slist_free(a);
 
         if(result->len > 0) {
             char *p = strchr(result->str, '\n' );
@@ -474,28 +474,29 @@ download_cb(WebKitWebView *web_view, WebKitDownload *download, gpointer user_dat
        (this may be inaccurate, there's nothing we can do about that.)  */
     unsigned int total_size = webkit_download_get_total_size(download);
 
-    GArray *a = g_array_new (TRUE, FALSE, sizeof(gchar*));
-    const CommandInfo *c = parse_command_parts(uzbl.behave.download_handler, a);
+    GSList *a = NULL;
+    const CommandInfo *c = parse_command_parts(uzbl.behave.download_handler, &a);
     if(!c) {
         webkit_download_cancel(download);
-        g_array_free(a, TRUE);
+        g_slist_free(a);
         return FALSE;
     }
 
-    g_array_append_val(a, uri);
-    g_array_append_val(a, suggested_filename);
-    g_array_append_val(a, content_type);
+    a = g_slist_append(a, uri);
+    a = g_slist_append(a, suggested_filename);
+    a = g_slist_append(a, content_type);
+
     gchar *total_size_s = g_strdup_printf("%d", total_size);
-    g_array_append_val(a, total_size_s);
+    a = g_slist_append(a, total_size_s);
 
     if(destination)
-        g_array_append_val(a, destination);
+        a = g_slist_append(a, destination);
 
     GString *result = g_string_new ("");
     run_parsed_command(c, a, result);
 
     g_free(total_size_s);
-    g_array_free(a, TRUE);
+    g_slist_free(a);
 
     /* no response, cancel the download */
     if(result->len == 0) {

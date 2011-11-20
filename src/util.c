@@ -144,11 +144,6 @@ find_existing_file(const gchar* path_list) {
     return result;
 }
 
-gchar*
-argv_idx(const GArray *a, const guint idx) {
-    return g_array_index(a, gchar*, idx);
-}
-
 GString *
 append_escaped (GString *dest, const gchar *src) {
     g_assert(dest);
