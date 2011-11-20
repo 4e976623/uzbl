@@ -348,20 +348,25 @@ scroll(GtkAdjustment* bar, const gchar *amount_str) {
 
 extern int parse_string(const char* input);
 
-/* just a wrapper so parse_cmd_line can be used with for_each_line_in_file */
-static void
-parse_cmd_line_cb(const char *line, void *user_data) {
-    (void) user_data;
-    parse_string(line);
-}
-
 void
 run_command_file(const gchar *path) {
-	if(!for_each_line_in_file(path, parse_cmd_line_cb, NULL)) {
+    GIOChannel *chan = g_io_channel_new_file(path, "r", NULL);
+
+    if (!chan) {
 		gchar *tmp = g_strdup_printf("File %s can not be read.", path);
 		send_event(COMMAND_ERROR, NULL, TYPE_STR, tmp, NULL);
 		g_free(tmp);
-	}
+    }
+
+    // TODO: once the parser can handle expansion, have the parser read the file.
+    // we shouldn't be reading the file all at once.
+    gchar *contents;
+    guint len;
+    g_io_channel_read_to_end(chan, &contents, &len, NULL);
+    parse_string(contents);
+    g_free(contents);
+
+    g_io_channel_unref (chan);
 }
 
 /* Javascript*/
@@ -631,13 +636,13 @@ run_parsed_command(const CommandInfo *c, GSList *a, GString *result) {
             NULL);
 
         /* might be destructive on array a */
-        c->function(uzbl.gui.web_view, a, result);
+        c->function(uzbl.gui.web_view, a, result, c->user_data);
 
         send_formatted_event (event);
         event_free (event);
     }
     else
-        c->function(uzbl.gui.web_view, a, result);
+        c->function(uzbl.gui.web_view, a, result, c->user_data);
 
     if(result) {
         g_free(uzbl.state.last_result);
@@ -646,13 +651,9 @@ run_parsed_command(const CommandInfo *c, GSList *a, GString *result) {
 }
 
 void
-parse_command_arguments(const gchar *p, GSList **a, gboolean no_split) {
-    if (no_split && p) { /* pass the parameters through in one chunk */
-        *a = g_slist_append(*a, g_strdup(p));
-        return;
-    }
-
+parse_command_arguments(const gchar *p, GSList **a) {
     gchar **par = split_quoted(p, TRUE);
+
     if (par) {
         guint i;
         for (i = 0; i < g_strv_length(par); i++)
@@ -691,7 +692,7 @@ parse_command_parts(const gchar *line, GSList **a) {
     g_strfreev(tokens);
 
     /* parse the arguments */
-    parse_command_arguments(p, a, c->no_split);
+    parse_command_arguments(p, a);
     g_free(p);
 
     return c;

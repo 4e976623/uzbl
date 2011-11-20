@@ -218,7 +218,7 @@ void        parse_command(const char *cmd, const char *param, GString *result);
 void        parse_cmd_line(const char *ctl_line, GString *result);
 const CommandInfo *
             parse_command_parts(const gchar *line, GSList **a);
-void        parse_command_arguments(const gchar *p, GSList **a, gboolean no_split);
+void        parse_command_arguments(const gchar *p, GSList **a);
 void        run_parsed_command(const CommandInfo *c, GSList *a, GString *result);
 
 /* Keyboard events functions */

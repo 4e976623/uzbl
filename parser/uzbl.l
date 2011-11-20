@@ -47,6 +47,11 @@ include\                  { BEGIN(rest_of_line); return INCLUDE; }
 <rest_of_line>[^\n]*    { *(gchar**)yylval = strdup(yytext); return REST_OF_LINE; }
 <rest_of_line>\n        { BEGIN(INITIAL); return EOL; }
 
+func                    return FUNC;
+
+\{                       return LCURLY;
+\}                       return RCURLY;
+
 [a-zA-Z0-9_/:\.=%-]+            { *(gchar**)yylval = strdup(yytext); return WORD; }
 
 \"                      { BEGIN(dquote); }
@@ -56,11 +61,6 @@ include\                  { BEGIN(rest_of_line); return INCLUDE; }
 \'                      { BEGIN(squote); }
 <squote>(\\.|[^\\'])*   { *(gchar**)yylval = strdup(yytext); return WORD; }
 <squote>\'              { BEGIN(INITIAL); }
-
-func                    return FUNC;
-
-{                       return LCURLY;
-}                       return RCURLY;
 
 \n                      return EOL;
 #.*\n                   /* ignore comments */;

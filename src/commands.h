@@ -6,12 +6,12 @@
 
 #include <webkit/webkit.h>
 
-typedef void (*Command)(WebKitWebView*, GSList *argv, GString *result);
+typedef void (*Command)(WebKitWebView*, GSList *argv, GString *result, void *user_data);
 
 typedef struct {
     const gchar *key;
     Command      function;
-    gboolean     no_split;
+    void *user_data;
 } CommandInfo;
 
 typedef struct {

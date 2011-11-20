@@ -9,12 +9,12 @@
 #include "uzbl.tab.h"
 #include "uzbl.flex.h"
 
-Dingus *uzbl_new_dingus(const gchar *command, GSList *argv);
-void uzbl_free_dingus(Dingus *dingus);
+Dingus *uzbl_new_dingus(gchar *command, GSList *argv);
+void execute(GSList *lines);
 
 void yyerror(const char *str)
 {
-        fprintf(stderr,"error: %s\n", str);
+    fprintf(stderr,"error: %s\n", str);
 }
 
 %}
@@ -45,8 +45,6 @@ lines:
         { $$ = NULL; }
         |
         lines line    { $$ = g_slist_append($$, $2); }
-        |
-        lines command { $$ = g_slist_append($$, $2); }
         ;
 
 line: command EOL { $$ = $1; }
@@ -82,13 +80,13 @@ command:
           $$ = uzbl_new_dingus("include", $2);
        }
        |
-       FUNC WORD LCURLY lines RCURLY {
+       FUNC WORD LCURLY EOL lines RCURLY {
           // i don't know WTF i'm doing 
           GSList *whatever = NULL;
-          whatever = g_slist_prepend(whatever, $4);
+          whatever = g_slist_prepend(whatever, $5);
           whatever = g_slist_prepend(whatever, $2);
 
-          $$ = uzbl_new_dingus("func", whatever);
+          $$ = uzbl_new_dingus("func2", whatever);
           //g_slist_free_full($2, g_free);
           // and should probably free something else too
        }
@@ -103,14 +101,14 @@ rol:
 
 arguments:
       // should be left-recursive instead?
-      WORD arguments { $$ = g_slist_prepend($2, $1); }
+      WORD arguments { $$ = g_slist_prepend($2, $1); puts($1); }
       |
       { $$ = NULL; }
       ;
 
 %%
 
-Dingus *uzbl_new_dingus(const gchar *command, GSList *argv) {
+Dingus *uzbl_new_dingus(gchar *command, GSList *argv) {
   Dingus *result  = malloc(sizeof(Dingus));
   result->command = command;
   result->argv    = argv;
@@ -127,17 +125,11 @@ void execute_line(Dingus *dingus) {
     set_var(dingus->argv->data);
   } else if (!strcmp(cmd, "print")) {
     puts(dingus->argv->data);
-  } else if (!strcmp(cmd, "js")) {
-    eval_js(uzbl.gui.web_view, dingus->argv->data, NULL, "(command)");
-  } else if (!strcmp(cmd, "search")) {
-    search_forward_text(uzbl.gui.web_view, dingus->argv, NULL);
-  } else if (!strcmp(cmd, "search_reverse")) {
-    search_reverse_text(uzbl.gui.web_view, dingus->argv, NULL);
   } else if (!strcmp(cmd, "event")) {
     event(dingus->argv->data);
   } else if (!strcmp(cmd, "include")) {
     include(dingus->argv->data);
-  } else if (!strcmp(cmd, "func")) {
+  } else if (!strcmp(cmd, "func2")) {
     define_function(dingus->argv->data, dingus->argv->next->data);
   } else {
     CommandInfo *c = g_hash_table_lookup(uzbl.behave.commands, cmd);
@@ -151,7 +143,17 @@ void execute(GSList *lines) {
   g_slist_foreach(lines, execute_line, NULL);
 }
 
-void define_function(const gchar* name, GSList *body) {
+void custom_function(WebKitWebView *view, GSList *argv, GString *result, GSList *function_body) {
+  execute(function_body);
+}
+
+void define_function(gchar* name, GSList *body) {
+    CommandInfo *c = malloc(sizeof(CommandInfo));
+    c->key       = name;
+    c->function  = custom_function;
+    c->user_data = body;
+
+    g_hash_table_insert(uzbl.behave.commands, name, c);
 }
 
 int parse_string(const char* input)
