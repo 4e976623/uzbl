@@ -14,6 +14,11 @@ typedef struct {
     gboolean     no_split;
 } CommandInfo;
 
+typedef struct {
+  gchar  *command;
+  GSList *argv;
+} Dingus;
+
 /**
  * Initialises the hash table uzbl.behave.commands with the available commands.
  */

@@ -2,6 +2,8 @@
 
 #include <glib.h>
 
+#include "../src/commands.h"
+
 extern char *strdup(const char *s);
 
 #include "uzbl.tab.h"
@@ -17,7 +19,6 @@ extern char *strdup(const char *s);
 
 %%
 
-uri\                      { BEGIN(rest_of_line); return URI; }
 js\                       { BEGIN(rest_of_line); return JS;  }
 search\                   { BEGIN(rest_of_line); return SEARCH; }
 search_reverse\           { BEGIN(rest_of_line); return SEARCH_REVERSE; }
@@ -55,6 +56,11 @@ include\                  { BEGIN(rest_of_line); return INCLUDE; }
 \'                      { BEGIN(squote); }
 <squote>(\\.|[^\\'])*   { *(gchar**)yylval = strdup(yytext); return WORD; }
 <squote>\'              { BEGIN(INITIAL); }
+
+func                    return FUNC;
+
+{                       return LCURLY;
+}                       return RCURLY;
 
 \n                      return EOL;
 #.*\n                   /* ignore comments */;
