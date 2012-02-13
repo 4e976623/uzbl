@@ -853,6 +853,53 @@ settings_init () {
     g_signal_connect(n->soup_session, "authenticate", G_CALLBACK(handle_authentication), NULL);
 }
 
+JSValueRef
+post_uzbl_message_function(JSContextRef ctx, JSObjectRef function, JSObjectRef this_object, size_t argument_count, const JSValueRef arguments[], JSValueRef *exception) {
+    (void) function; (void) this_object; (void) exception;
+
+    GArray* c_arguments = g_array_sized_new(TRUE, TRUE, sizeof(gchar *), argument_count);
+
+    // turn each javascript argument into a C string
+    for(size_t i = 0; i < argument_count; ++i) {
+        JSStringRef arg = JSValueToStringCopy(ctx, arguments[i], NULL);
+        size_t arg_size = JSStringGetMaximumUTF8CStringSize(arg);
+
+        gchar *cstring = malloc(arg_size);
+        if(cstring) {
+          JSStringGetUTF8CString(arg, cstring, arg_size);
+
+          g_array_append_val(c_arguments, cstring);
+        }
+
+        JSStringRelease(arg);
+    }
+
+    // send the event
+    send_event(JS_MESSAGE, NULL, TYPE_STR_ARRAY, c_arguments, NULL);
+
+    // free the strings we created
+    for(size_t i = 0; i < argument_count; ++i)
+        g_free(g_array_index(c_arguments, gchar *, i));
+
+    g_array_free(c_arguments, TRUE);
+
+    return JSValueMakeUndefined(ctx);
+}
+
+void
+set_up_javascript() {
+    WebKitWebFrame *frame = webkit_web_view_get_main_frame(WEBKIT_WEB_VIEW(uzbl.gui.web_view));
+    JSGlobalContextRef context = webkit_web_frame_get_global_context(frame);
+    JSObjectRef globalobject = JSContextGetGlobalObject(context);
+
+    JSStringRef function_name = JSStringCreateWithUTF8CString("postUzblMessage");
+
+    JSObjectRef post_uzbl_message = JSObjectMakeFunctionWithCallback(context, function_name, post_uzbl_message_function);
+
+    JSObjectSetProperty(context, globalobject,
+                        function_name, post_uzbl_message,
+                        kJSPropertyAttributeNone, NULL);
+}
 
 void handle_authentication (SoupSession *session, SoupMessage *msg, SoupAuth *auth, gboolean retrying, gpointer user_data) {
     (void) user_data;
@@ -1087,6 +1134,9 @@ main (int argc, char* argv[]) {
 
     /* WebInspector */
     set_up_inspector();
+
+    /* our custom javascript objects */
+    set_up_javascript();
 
     /* Options overriding */
     if (verbose_override > uzbl.state.verbose)

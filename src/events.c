@@ -57,7 +57,8 @@ const char *event_table[LAST_EVENT] = {
      "ADD_COOKIE"       ,
      "DELETE_COOKIE"    ,
      "FOCUS_ELEMENT"    ,
-     "BLUR_ELEMENT"
+     "BLUR_ELEMENT"     ,
+     "JS_MESSAGE"
 };
 
 /* for now this is just a alias for GString */
